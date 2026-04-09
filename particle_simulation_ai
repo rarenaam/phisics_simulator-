@@ -1,0 +1,111 @@
+import pygame
+import random
+
+# Initialisatie
+pygame.init()
+font_stats = pygame.font.SysFont("Arial", 24, True)
+screen = pygame.display.set_mode((1920, 1080))
+pygame.display.set_caption("Random Walk Diffusie Simulatie")
+
+# Kleuren
+red, orange, yellow, green, blue, purple, white = (255, 0, 0), (255, 165, 0), (255, 255, 0), (0, 255, 0), (0, 0, 255), (
+    128, 0, 128), (255, 255, 255)
+c_list = [red, orange, yellow, green, blue, purple, white]
+
+# --- Variabelen ---
+line = []
+N = 10000
+speed = 1.0
+start_x, start_y = 960, 540
+step_size = 10  # Nu globaal gedefinieerd bovenaan
+
+# Setup deeltjes
+for i in range(N):
+    start = [start_x, start_y]
+    end = [start_x, start_y]
+    colour = random.choice(c_list)
+    line.append([start, end, colour])
+
+clock = pygame.time.Clock()
+tick_counter = 0.0
+
+running = True
+while running:
+    # 1. Event Handling
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_w:
+                speed *= 2.0
+            if event.key == pygame.K_SPACE:
+                speed /= 2.0
+            if event.key == pygame.K_r:
+                speed = 1.0
+
+    # 2. Tekenen
+    screen.fill((0, 0, 0))
+
+    t = (tick_counter % 60) / 60.0
+
+    for i in range(N):
+        start_pos = line[i][0]
+        end_pos = line[i][1]
+
+        current_x = start_pos[0] + t * (end_pos[0] - start_pos[0])
+        current_y = start_pos[1] + t * (end_pos[1] - start_pos[1])
+
+        pygame.draw.circle(screen, line[i][2], (int(current_x), int(current_y)), 2)
+
+    # 3. Reset logica
+    if (tick_counter + speed) // 60 > tick_counter // 60:
+        for i in range(N):
+            line[i][0] = list(line[i][1])
+
+            # Gebruikt de globale step_size
+            new_x = line[i][0][0] + random.uniform(-step_size, step_size)
+            new_y = line[i][0][1] + random.uniform(-step_size, step_size)
+
+            new_x = max(0, min(new_x, 1920))
+            new_y = max(0, min(new_y, 1080))
+
+            line[i][1] = [new_x, new_y]
+
+    # 4. Statistieken
+    stappen = int(tick_counter // 60)
+
+    max_dist = 0
+    for i in range(N):
+        dist = ((line[i][0][0] - start_x) ** 2 + (line[i][0][1] - start_y) ** 2) ** 0.5
+        if dist > max_dist:
+            max_dist = dist
+
+    # Berekening verwachting
+    verwacht = (stappen ** 0.5) * step_size * 0.7
+
+    # Bereken gemiddelde afstand
+    total_dist = 0
+    for i in range(N):
+        dist = ((line[i][0][0] - start_x) ** 2 + (line[i][0][1] - start_y) ** 2) ** 0.5
+        total_dist += dist
+    avg_dist = total_dist / N
+
+
+    texts = [
+        f"Stappen: {stappen}",
+        f"Snelheid: {speed}x",
+        f"Verste deeltje (gemeten): {int(max_dist)} px",
+        f"Verwachte spreiding (vT * stap): {round(verwacht, 1)} px",
+        f"gemiddelde afstand): {round(avg_dist)} px"
+    ]
+
+    for idx, msg in enumerate(texts):
+        surf = font_stats.render(msg, True, white)
+        screen.blit(surf, (20, 1080 - 150 + (idx * 30)))
+
+    # 5. Update
+    pygame.display.flip()
+    tick_counter += speed
+    clock.tick(60)
+
+pygame.quit()
